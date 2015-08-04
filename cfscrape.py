@@ -1,12 +1,20 @@
+import time
 import re
-import execjs
-import urllib.parse as urlparse
 import requests
 from requests.adapters import HTTPAdapter
+import execjs
 
-DEFAULT_USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Ubuntu Chromium/34.0.1847.116 Chrome/34.0.1847.116 Safari/537.36")
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
+DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0"
+JS_ENGINE = execjs.get().name
+
+if not ("Node" in JS_ENGINE or "V8" in JS_ENGINE):
+    raise EnvironmentError("Your Javascript runtime '%s' is not supported due to security concerns. "
+                           "Please use Node.js, V8, or PyV8." % JS_ENGINE)
 
 class CloudflareAdapter(HTTPAdapter):
     def send(self, request, **kwargs):
@@ -18,8 +26,9 @@ class CloudflareAdapter(HTTPAdapter):
             return resp
 
         # Check if Cloudflare anti-bot is on
-        if "a = document.getElementById('jschl-answer');" in resp.content.decode('utf-8', 'ignore'):
-            return self.solve_cf_challenge(resp, request.headers, **kwargs)
+        if ( "URL=/cdn-cgi/" in resp.headers.get("Refresh", "") and
+             resp.headers.get("Server", "") == "cloudflare-nginx" ):
+            return self.solve_cf_challenge(resp, request.headers, resp.cookies, **kwargs)
 
         # Otherwise, no Cloudflare anti-bot detected
         return resp
@@ -29,37 +38,50 @@ class CloudflareAdapter(HTTPAdapter):
         if "requests" in request.headers["User-Agent"]:
             request.headers["User-Agent"] = DEFAULT_USER_AGENT
 
-    def solve_cf_challenge(self, resp, headers, **kwargs):
+    def format_js(self, js):
+        js = re.sub(r"[\n\\']", "", js)
+        if "Node" in JS_ENGINE:
+            return "return require('vm').runInNewContext('%s');" % js
+        return js.replace("parseInt", "return parseInt")
+
+    def solve_cf_challenge(self, resp, headers, cookies, **kwargs):
+        time.sleep(5) # Cloudflare requires a delay before solving the challenge
+
         headers = headers.copy()
         url = resp.url
         parsed = urlparse(url)
         domain = parsed.netloc
-        page = resp.content
-        kwargs.pop("params", None)  # Don't pass on params
+        page = resp.text
+        kwargs.pop("params", None) # Don't pass on params
         try:
-            # Extract the arithmetic operation
             challenge = re.search(r'name="jschl_vc" value="(\w+)"', page).group(1)
+            challenge_pass = re.search(r'name="pass" value="(.+?)"', page).group(1)
+
+            # Extract the arithmetic operation
             builder = re.search(r"setTimeout\(function\(\){\s+(var t,r,a,f.+?\r?\n[\s\S]+?a\.value =.+?)\r?\n", page).group(1)
             builder = re.sub(r"a\.value =(.+?) \+ .+?;", r"\1", builder)
             builder = re.sub(r"\s{3,}[a-z](?: = |\.).+", "", builder)
 
-        except AttributeError:
+        except Exception as e:
             # Something is wrong with the page. This may indicate Cloudflare has changed their
             # anti-bot technique. If you see this and are running the latest version,
             # please open a GitHub issue so I can update the code accordingly.
-            raise IOError("Unable to parse Cloudflare anti-bots page. Try upgrading cfscrape, or "
-                          "submit a bug report if you are running the latest version.")
+            print ("[!] Unable to parse Cloudflare anti-bots page. Try upgrading cloudflare-scrape, or submit "
+                   "a bug report if you are running the latest version. Please read "
+                   "https://github.com/Anorov/cloudflare-scrape#updates before submitting a bug report.\n")
+            raise
 
-        # Lock must be added explicitly, because PyV8 bypasses the GIL
-        ctxt = execjs.get('PhantomJS')
         # Safely evaluate the Javascript expression
-        answer = str(int(ctxt.eval(builder)) + len(domain))
+        js = self.format_js(builder)
+        answer = str(int(execjs.exec_(js)) + len(domain))
 
-        params = {"jschl_vc": challenge, "jschl_answer": answer}
+        params = {"jschl_vc": challenge, "jschl_answer": answer, "pass": challenge_pass}
         submit_url = "%s://%s/cdn-cgi/l/chk_jschl" % (parsed.scheme, domain)
         headers["Referer"] = url
 
-        return requests.get(submit_url, params=params, headers=headers, **kwargs)
+        resp = requests.get(submit_url, params=params, headers=headers, cookies=cookies, **kwargs)
+        resp.cookies.set("__cfduid", cookies.get("__cfduid"))
+        return resp
 
 
 def create_scraper(session=None):
@@ -72,3 +94,26 @@ def create_scraper(session=None):
     sess.mount("http://", adapter)
     sess.mount("https://", adapter)
     return sess
+
+def get_tokens(url, user_agent=None):
+    scraper = create_scraper()
+    user_agent = user_agent or DEFAULT_USER_AGENT
+    scraper.headers["User-Agent"] = user_agent
+    
+    try:
+        resp = scraper.get(url)
+        resp.raise_for_status()
+    except Exception:
+        print("'%s' returned error %d, could not collect tokens.\n" % (url, resp.status_code))
+        raise
+
+    return ( { 
+                 "__cfduid": resp.cookies.get("__cfduid", ""),
+                 "cf_clearance": scraper.cookies.get("cf_clearance", "")
+             },
+             user_agent
+           )
+
+def get_cookie_string(url, user_agent=None):
+    tokens, user_agent = get_tokens(url, user_agent=user_agent)
+    return "; ".join("=".join(pair) for pair in tokens.items()), user_agent
