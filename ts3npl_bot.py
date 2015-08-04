@@ -96,7 +96,7 @@ def lowscore_user_part(bot, host):
     if user is not None:
         join_time = user['join']
         cur_time = time.time()
-        if (cur_time - join_time) < 10*60:
+        if (cur_time - join_time) < 10*60 and len(user['lines']) > 0:
             add_lowscore(host.split('!')[0], user['lines'], cur_time-join_time)   
 
         lowscore_last_messages.pop(host, None)
