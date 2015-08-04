@@ -1,4 +1,4 @@
-from irc.bot import IRCBot
+﻿from irc.bot import IRCBot
 import irc.events
 import irc.loops
 from irc.protocol import log
@@ -17,6 +17,7 @@ start_time = time.time()
 db = sqlite3.connect('bar.db')
 db_cursor = db.cursor()
 db_cursor.execute('CREATE TABLE IF NOT EXISTS bar (trigger text, answer text)')
+db_cursor.execute('CREATE TABLE IF NOT EXISTS lowscore (username text, lines text, time int)')
 db.commit()
 
 global last_status
@@ -45,6 +46,19 @@ def get_text(trigger):
     db_cursor.execute('SELECT answer FROM bar WHERE trigger=?', (trigger,))
     return db_cursor.fetchone()[0]
 
+# variables for lowscore-functionality
+lowscore_last_messages = {}
+
+# functions for the lowscore-functionality
+def add_lowscore(username, lines, time):
+    db_cursor.execute('INSERT INTO lowscore VALUES (?,?,?)', (str(username), str(lines), int(time)))
+    db.commit()
+
+def get_lowscores(amount):
+    r = []
+    for lowscore in db_cursor.execute('SELECT * from lowscore ORDER BY time ASC LIMIT '+str(amount)):
+        r.append({'username': lowscore[0], 'lines': lowscore[1], 'time': lowscore[2]})
+    return r
 
 @irc.loops.min5
 def check_status(bot):
@@ -57,6 +71,46 @@ def check_status(bot):
         else:
             bot.privmsg('NPL-Registrations are now closed!')
 
+
+@irc.events.channel_msg
+def lowscore_message(bot, host, target, msg):
+    user = lowscore_last_messages.get(host, None)
+    if user is not None:
+        user['lines'].append(msg)
+
+    if msg.startswith('_lowscore'):
+        lowscores = get_lowscores(3)
+        answer = 'TOP 3: '
+        for l in lowscores:
+            answer += l['username'] + ' [T: ' + str(l['time']) + ' seconds] '
+        bot.privmsg(answer)
+
+@irc.events.user_join
+def lowscore_user_join(bot, host):
+    global lowscore_last_messages
+    lowscore_last_messages[host] = {'lines': [], 'join': time.time()}
+
+@irc.events.user_part
+def lowscore_user_part(bot, host):
+    user = lowscore_last_messages.get(host, None)
+    if user is not None:
+        join_time = user['join']
+        cur_time = time.time()
+        if (cur_time - join_time) < 10*60 and len(user['lines']) > 0:
+            add_lowscore(host.split('!')[0], user['lines'], cur_time-join_time)   
+
+        lowscore_last_messages.pop(host, None)
+
+@irc.loops.min5
+def lowscore_cleanup(bot):
+    global lowscore_last_messages
+    cur_time = time.time()
+    to_del = []
+    for key in lowscore_last_messages:
+        if (cur_time - lowscore_last_messages[key]['join']) > 10*60:
+            to_del.append(key)
+    for key in to_del:
+        lowscore_last_messages.pop(key, None)
 
 @irc.events.channel_msg
 def info(bot, host, target, msg):
