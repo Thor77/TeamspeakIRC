@@ -14,7 +14,6 @@ class TS3NPL(object):
 
     @cron('* * * * *')
     def fetch_status(self):
-        print('checked cron')
         new_status = nplstatus.get()
         if self.npl_status is not None and new_status != self.npl_status:
             if new_status:
