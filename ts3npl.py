@@ -18,9 +18,11 @@ class TS3NPL(object):
         new_status = nplstatus.get()
         if self.npl_status is not None and new_status != self.npl_status:
             if new_status:
-                self.bot.privmsg(self.target_channel, 'NPL-Registrations are now open!')
+                self.bot.privmsg(self.target_channel,
+                                 'NPL-Registrations are now open!')
             else:
-                self.bot.privmsg(self.target_channel, 'NPL-Registrations are now closed!')
+                self.bot.privmsg(self.target_channel,
+                                 'NPL-Registrations are now closed!')
         self.npl_status = new_status
 
     @command(permission='view')
