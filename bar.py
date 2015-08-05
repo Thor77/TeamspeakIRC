@@ -13,7 +13,7 @@ class Bar(object):
 
             %%addtobar <item> <text>...
         '''
-        key = args['<item>']
+        key = args['<item>'].lower()
         value = ' '.join(args['<text>'])
         if self in self.bot.db:
             self.bot.db[self][key] = value
@@ -29,29 +29,45 @@ class Bar(object):
         '''
         if self not in self.bot.db:
             return 'No items in bar!'
-        if args['<item>'] in self.bot.db[self]:
-            del self.bot.db[self][args['<item>']]
-            return 'Successfully removed {} from bar!'.format(args['<item>'])
+        item = args['<item>'].lower()
+        if item in self.bot.db[self]:
+            del self.bot.db[self][item]
+            return 'Successfully removed {} from bar!'.format(item)
         else:
             return 'Bar doesn\'t contain this item!'
 
     @command
     def bar(self, mask, target, args):
-        '''get all items in bar or return specific value
+        '''get all items in bar
+            if you want to access an specific item, use _<item>
+            or if you want to "give" an item to a user use !give <nick> <item>
 
             %%bar [<item>]
         '''
         if self in self.bot.db:
-            item = args['<item>']
-            if item is not None:
-                # get specific argument
-                if item in self.bot.db[self]:
-                    return self.bot.db[self][item]
-                else:
-                    return 'My bar doesn\'t contain this item!'
-            else:
-                # list bar
-                keys = self.bot.db[self].keys()
-                if len(keys) >= 1:
-                    return ', '.join(keys)
+            # list bar
+            keys = self.bot.db[self].keys()
+            if len(keys) >= 1:
+                return ', '.join(keys)
         return 'No items in bar!'
+
+    @command
+    def give(self, mask, target, args):
+        '''"give" an item to an specific user
+
+            %%give <nick> <item>
+        '''
+        if self in self.bot.db and len(self.bot.db[self]) >= 1:
+            item = args['<item>']
+            if item in self.bot.db[self]:
+                return '{}: {}'.format(args['<nick>'], self.bot.db[self][item])
+            else:
+                return 'Bar doesn\'t contain this item!'
+        return 'No items in bar!'
+
+    @irc3.event(irc3.rfc.PRIVMSG)
+    def bar_get(self, mask=None, event=None, target=None, data=None):
+        if data.startswith('_'):
+            item = data.split()[0][1:]
+            if item in self.bot.db[self]:
+                self.bot.privmsg(target, self.bot.db[self][item])
