@@ -42,7 +42,7 @@ class Bar(object):
             if you want to access an specific item, use _<item>
             or if you want to "give" an item to a user use !give <nick> <item>
 
-            %%bar [<item>]
+            %%bar
         '''
         if self in self.bot.db:
             # list bar
