@@ -67,7 +67,7 @@ class Bar(object):
 
     @irc3.event(irc3.rfc.PRIVMSG)
     def bar_get(self, mask=None, event=None, target=None, data=None):
-        if data.startswith('_'):
+        if data.startswith('?'):
             item = data.split()[0][1:]
             if item in self.bot.db[self]:
                 self.bot.privmsg(target, self.bot.db[self][item])
