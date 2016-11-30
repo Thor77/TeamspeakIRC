@@ -2,7 +2,7 @@ from irc3.plugins.command import command
 from irc3.plugins.cron import cron
 import irc3
 
-import nplstatus
+from teamspeak_web_utils import nplstatus
 
 
 @irc3.plugin
@@ -14,7 +14,7 @@ class TS3NPL(object):
 
     @cron('* * * * *')
     def fetch_status(self):
-        new_status = nplstatus.get()
+        new_status = nplstatus()
         if self.npl_status is not None and new_status != self.npl_status:
             if new_status:
                 self.bot.privmsg(self.target_channel,
@@ -31,7 +31,7 @@ class TS3NPL(object):
             %%nplstatus
         '''
         if self.npl_status is None:
-            self.npl_status = nplstatus.get()
+            self.npl_status = nplstatus()
 
         if self.npl_status:
             return 'NPL-Registrations are currently open!'

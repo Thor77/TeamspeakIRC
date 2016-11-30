@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import cfscrape
 
 
-def get():
+def nplstatus():
     scraper = cfscrape.create_scraper()
     data = scraper.get('http://npl.teamspeakusa.com/ts3npl.php').content
     soup = BeautifulSoup(data, 'html.parser')
