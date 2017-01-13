@@ -21,4 +21,8 @@ def latest_version():
     def search(search_string):
         return soup.find_all(text=re.compile(search_string))[0].parent.\
                 find(class_='version').text
-    return search(r'Client\ 64\-bit'), search(r'Server\ 64\-bit')
+
+    def clean(s):
+        return s.replace('\n', '').strip()
+    return clean(search(r'Client\ 64\-bit')), \
+        clean(search(r'Server\ 64\-bit'))
