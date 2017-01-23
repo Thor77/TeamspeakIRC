@@ -3,3 +3,4 @@ beautifulsoup4>=4.4.0
 PyExecJS>=1.1.0
 irc3>=0.8.1
 aiocron>=0.3
+cfscrape
