@@ -1,5 +1,4 @@
 # TeamspeakIRC [![Build Status](https://travis-ci.org/Thor77/TeamspeakIRC.svg)](https://travis-ci.org/Thor77/TeamspeakIRC)
-``cfscrape.py`` from [cloudflare-scrape](https://github.com/Anorov/cloudflare-scrape) (MIT-License)
 
 # Usage
 * install requirements ``pip3 install -r requirements.txt``
