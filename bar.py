@@ -69,5 +69,5 @@ class Bar(object):
     def bar_get(self, mask=None, event=None, target=None, data=None):
         if data.startswith('?'):
             item = data.split()[0][1:]
-            if item in self.bot.db[self]:
+            if item in self.bot.db.get(self, {}):
                 self.bot.privmsg(target, self.bot.db[self][item])
