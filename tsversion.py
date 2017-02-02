@@ -10,21 +10,23 @@ class TSVersion(object):
         self.bot = bot
         self.client_version = None
         self.server_version = None
-        self.target_channel = '#teamspeak'
+        config = bot.config.get('tsversion', {})
+        self.channel = config.get('channel')
 
     @cron('1 * * * *')
     def fetch_version(self):
         new_client, new_server = latest_version()
+        if self.channel:
+            # Notify channel
+            if self.client_version is not None and \
+                    self.client_version != new_client:
+                self.bot.privmsg(self.channel,
+                                 'New client release: {}'.format(new_client))
 
-        if self.client_version is not None and \
-                self.client_version != new_client:
-            self.bot.privmsg(self.target_channel,
-                             'New client release: {}'.format(new_client))
-
-        if self.server_version is not None and \
-                self.server_version != new_server:
-            self.bot.privmsg(self.target_channel,
-                             'New server release: {}'.format(new_server))
+            if self.server_version is not None and \
+                    self.server_version != new_server:
+                self.bot.privmsg(self.channel,
+                                 'New server release: {}'.format(new_server))
 
         self.client_version = new_client
         self.server_version = new_server
