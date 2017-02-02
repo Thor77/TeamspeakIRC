@@ -12,6 +12,10 @@ class TSVersion(object):
         self.server_version = None
         config = bot.config.get('tsversion', {})
         self.channel = config.get('channel')
+        self.topic_template = config.get(
+            'topic',
+            'Client: {client} Server: {server}'
+        )
 
     @cron('1 * * * *')
     def fetch_version(self):
@@ -41,3 +45,15 @@ class TSVersion(object):
             self.fetch_version()
         return 'Client: {} Server: {}'.format(
             self.client_version, self.server_version)
+
+    @command(permission='admin')
+    def topic(self, mask, target, args):
+        '''Set topic to contain Teamspeak3 Server/Client-version
+
+            %%topic
+        '''
+        if self.channel and self.topic_template:
+            topic = self.topic_template.format(
+                client=self.client_version, server=self.server_version
+            )
+            self.bot.topic('#' + self.channel, topic)
