@@ -10,12 +10,15 @@ class TS3NPL(object):
     def __init__(self, bot):
         self.bot = bot
         self.npl_status = None
-        self.target_channel = '#teamspeak'
+        config = bot.config.get('ts3npl', {})
+        self.target_channel = config.get('channel')
 
     @cron('* * * * *')
     def fetch_status(self):
+        print('checking status')
         new_status = nplstatus()
-        if self.npl_status is not None and new_status != self.npl_status:
+        if self.npl_status is not None and new_status != self.npl_status \
+                and self.target_channel:
             if new_status:
                 self.bot.privmsg(self.target_channel,
                                  'NPL-Registrations are now open!')
