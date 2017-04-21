@@ -12,6 +12,9 @@ class TS3NPL(object):
         self.npl_status = None
         config = bot.config.get('ts3npl', {})
         self.target_channel = config.get('channel')
+        self.message_template = config.get(
+            'template', 'NPL-Registrations are {announcement} {status}!'
+        )
 
     @cron('* * * * *')
     def fetch_status(self):
@@ -20,11 +23,19 @@ class TS3NPL(object):
         if self.npl_status is not None and new_status != self.npl_status \
                 and self.target_channel:
             if new_status:
-                self.bot.privmsg(self.target_channel,
-                                 'NPL-Registrations are now open!')
+                self.bot.privmsg(
+                    self.target_channel,
+                    self.message_template.format(
+                        announcement='now', status='open'
+                    )
+                )
             else:
-                self.bot.privmsg(self.target_channel,
-                                 'NPL-Registrations are now closed!')
+                self.bot.privmsg(
+                    self.target_channel,
+                    self.message_template.format(
+                        announcement='now', status='closed'
+                    )
+                )
         self.npl_status = new_status
 
     @command(permission='view')
@@ -37,6 +48,8 @@ class TS3NPL(object):
             self.npl_status = nplstatus()
 
         if self.npl_status:
-            return 'NPL-Registrations are currently open!'
+            return self.message_template.format(
+                announcement='currently', status='open')
         else:
-            return 'NPL-Registrations are currently closed!'
+            return self.message_template.format(
+                announcement='currently', status='closed')
