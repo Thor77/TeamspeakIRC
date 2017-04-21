@@ -39,7 +39,7 @@ class Bar(object):
     @command
     def bar(self, mask, target, args):
         '''get all items in bar
-            if you want to access an specific item, use _<item>
+            if you want to access an specific item, use ?<item>
             or if you want to "give" an item to a user use !give <nick> <item>
 
             %%bar
