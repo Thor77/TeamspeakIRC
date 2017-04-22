@@ -52,6 +52,8 @@ class TSVersion(object):
 
             %%topic
         '''
+        if not self.client_version or not self.server_version:
+            self.fetch_version()
         if self.channel and self.topic_template:
             topic = self.topic_template.format(
                 client=self.client_version, server=self.server_version
