@@ -18,7 +18,6 @@ class TS3NPL(object):
 
     @cron('* * * * *')
     def fetch_status(self):
-        print('checking status')
         new_status = nplstatus()
         if self.npl_status is not None and new_status != self.npl_status \
                 and self.target_channel:
