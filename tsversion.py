@@ -56,4 +56,4 @@ class TSVersion(object):
             topic = self.topic_template.format(
                 client=self.client_version, server=self.server_version
             )
-            self.bot.topic('#' + self.channel, topic)
+            self.bot.topic(self.channel, topic)
