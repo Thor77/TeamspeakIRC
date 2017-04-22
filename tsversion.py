@@ -43,8 +43,9 @@ class TSVersion(object):
         '''
         if not self.client_version or not self.server_version:
             self.fetch_version()
-        return 'Client: {} Server: {}'.format(
-            self.client_version, self.server_version)
+        return self.topic_template.format(
+            client=self.client_version, server=self.server_version
+        )
 
     @command(permission='admin')
     def topic(self, mask, target, args):
